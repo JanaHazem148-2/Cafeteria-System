@@ -25,6 +25,16 @@ import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.stage.Stage;
 import javafx.util.Duration;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class CafGui extends Application {
@@ -41,9 +51,20 @@ public class CafGui extends Application {
     private VBox studentCenterBox;
     private Random rng = new Random();
 
+    private StudentManager studentManager = new StudentManager();
+
+    private Label studentNameLabel;
+    private Label moneyLabel;
+    private Label loyaltyLabel;
+    private int currentStudentId = -1;
+
+    private Map<Integer, List<String>> orderRecords = new HashMap<>();
+    private int nextOrderId = 1;
+
     public void start(Stage stage) {
         primaryStage = stage;
-        seedItems();
+        loadItemsOrSeed();
+        loadOrders();
         Scene s = new Scene(buildMain(), 1000, 700);
         stage.setScene(s);
         stage.setTitle("Cafeteria");
@@ -54,13 +75,11 @@ public class CafGui extends Application {
         studentStage.setTitle("Student");
         studentStage.getIcons().add(new Image("file:C:/Users/zizo/Documents/GitHub/Cafeteria-System/Coffe.png"));
         studentStage.setScene(createStudentScene(studentStage));
-        studentStage.show();
 
         managerStage = new Stage();
         managerStage.setTitle("Manager");
         managerStage.getIcons().add(new Image("file:C:/Users/zizo/Documents/GitHub/Cafeteria-System/Coffe.png"));
         managerStage.setScene(createManagerScene(managerStage));
-        managerStage.show();
 
         registerStage = new Stage();
         registerStage.setTitle("Register");
@@ -73,16 +92,6 @@ public class CafGui extends Application {
         loginStage.setScene(createLoginScene(loginStage));
     }
 
-    private void seedItems() {
-        menuItems.addAll(
-                new MenuItemModel("testitem1", 0, 5),
-                new MenuItemModel("testitem2", 0, 5),
-                new MenuItemModel("testitem3", 0, 5),
-                new MenuItemModel("testitem4", 0, 5),
-                new MenuItemModel("testitem5", 0, 5)
-        );
-    }
-
     private StackPane buildMain() {
         StackPane bg = createStripBg();
 
@@ -90,10 +99,19 @@ public class CafGui extends Application {
         Button login = styledButton("Login");
         Button exit = smallBackButton();
         exit.setText("Exit");
-        exit.setOnAction(e -> Platform.exit());
+        exit.setOnAction(e -> {
+            saveAll();
+            Platform.exit();
+        });
 
-        register.setOnAction(e -> registerStage.show());
-        login.setOnAction(e -> loginStage.show());
+        register.setOnAction(e -> {
+            registerStage.show();
+            registerStage.toFront();
+        });
+        login.setOnAction(e -> {
+            loginStage.show();
+            loginStage.toFront();
+        });
 
         HBox topRow = new HBox(20, register, login);
         topRow.setAlignment(Pos.CENTER);
@@ -102,6 +120,72 @@ public class CafGui extends Application {
 
         StackPane root = new StackPane(bg, stackButtons);
         return root;
+    }
+
+    private void loadItemsOrSeed() {
+        File f = new File("items.dat");
+        if (f.exists()) {
+            try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
+                Object obj = ois.readObject();
+                if (obj instanceof ArrayList) {
+                    List<MenuItemModel> list = (ArrayList<MenuItemModel>) obj;
+                    menuItems.clear();
+                    menuItems.addAll(list);
+                    return;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        seedItems();
+        saveItems();
+    }
+
+    private void loadOrders() {
+        File f = new File("orders.dat");
+        if (!f.exists()) return;
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(f))) {
+            Object obj = ois.readObject();
+            if (obj instanceof Map) {
+                Map<?, ?> raw = (Map<?, ?>) obj;
+                orderRecords.clear();
+                for (Map.Entry<?, ?> e : raw.entrySet()) {
+                    Integer k = (Integer) e.getKey();
+                    List<String> v = (List<String>) e.getValue();
+                    orderRecords.put(k, new ArrayList<>(v));
+                    if (k >= nextOrderId) nextOrderId = k + 1;
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void saveOrders() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("orders.dat"))) {
+            oos.writeObject(orderRecords);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void seedItems() {
+        menuItems.clear();
+        menuItems.addAll(
+                new MenuItemModel("Black coffe", 2, 6),
+                new MenuItemModel("Latte", 3, 8),
+                new MenuItemModel("Cappuccino", 4, 5),
+                new MenuItemModel("Bread Sticks", 5, 10),
+                new MenuItemModel("Cup Cake", 7, 4)
+        );
+    }
+
+    private int randomPrice() {
+        return 1 + rng.nextInt(5);
+    }
+
+    private int randomStock() {
+        return 1 + rng.nextInt(10);
     }
 
     private Scene createRegisterScene(Stage owner) {
@@ -119,17 +203,61 @@ public class CafGui extends Application {
         enter.setOnAction(e -> {
             String n = nameFld.getText().trim();
             String id = idFld.getText().trim();
+            if (n.isEmpty() || id.isEmpty()) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Name and ID are required");
+                a.showAndWait();
+                return;
+            }
+            int parsedId;
+            try {
+                parsedId = Integer.parseInt(id);
+            } catch (NumberFormatException ex) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("ID must be numeric");
+                a.showAndWait();
+                return;
+            }
+            if (studentManager.isManager(parsedId)) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Cannot register with a manager ID");
+                a.showAndWait();
+                return;
+            }
+            if (studentManager.studentExists(parsedId)) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Student ID already registered");
+                a.showAndWait();
+                return;
+            }
+            boolean ok = studentManager.addStudent(n, parsedId);
+            if (!ok) {
+                Alert a = new Alert(Alert.AlertType.ERROR);
+                a.setContentText("Registration failed");
+                a.showAndWait();
+                return;
+            }
             Alert a = new Alert(Alert.AlertType.INFORMATION);
             a.setContentText("Registered: " + n + " (" + id + ")");
             a.showAndWait();
-            owner.close();
+
+            primaryStage.hide();
+            loginStage.hide();
+            registerStage.hide();
+
+            currentStudentId = parsedId;
+            Student s = studentManager.getStudent(parsedId);
+            updateStudentLabels(s);
+            refreshStudentMenu();
+            studentStage.show();
+            studentStage.toFront();
         });
         form.getChildren().addAll(nameFld, idFld, enter);
         form.setAlignment(Pos.CENTER);
         content.setCenter(form);
 
         Button back = smallBackButton();
-        back.setOnAction(e -> owner.close());
+        back.setOnAction(e -> owner.hide());
         HBox bottom = new HBox(8, back);
         bottom.setAlignment(Pos.CENTER);
         bottom.setPadding(new Insets(10));
@@ -151,19 +279,52 @@ public class CafGui extends Application {
         Button enter = formButton("Enter");
         enter.setOnAction(e -> {
             String id = idFld.getText().trim();
-            Alert a = new Alert(Alert.AlertType.INFORMATION);
-            a.setContentText("Logged in: " + id);
-            a.showAndWait();
-            owner.close();
-            studentStage.show();
-            studentStage.toFront();
+            if (id.isEmpty()) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Please enter an ID");
+                a.showAndWait();
+                return;
+            }
+            int parsedId;
+            try {
+                parsedId = Integer.parseInt(id);
+            } catch (NumberFormatException ex) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("ID must be numeric");
+                a.showAndWait();
+                return;
+            }
+            if (studentManager.isManager(parsedId)) {
+                primaryStage.hide();
+                loginStage.hide();
+                registerStage.hide();
+                refreshManagerMenu();
+                managerStage.show();
+                managerStage.toFront();
+                return;
+            }
+            if (studentManager.studentExists(parsedId)) {
+                primaryStage.hide();
+                loginStage.hide();
+                registerStage.hide();
+                currentStudentId = parsedId;
+                Student s = studentManager.getStudent(parsedId);
+                updateStudentLabels(s);
+                refreshStudentMenu();
+                studentStage.show();
+                studentStage.toFront();
+            } else {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("User not found");
+                a.showAndWait();
+            }
         });
         form.getChildren().addAll(idFld, enter);
         form.setAlignment(Pos.CENTER);
         content.setCenter(form);
 
         Button back = smallBackButton();
-        back.setOnAction(e -> owner.close());
+        back.setOnAction(e -> owner.hide());
         HBox bottom = new HBox(8, back);
         bottom.setAlignment(Pos.CENTER);
         bottom.setPadding(new Insets(10));
@@ -180,13 +341,22 @@ public class CafGui extends Application {
         content.setPrefSize(1000, 700);
 
         HBox top = new HBox();
-        Label nameLabel = new Label("testname");
-        nameLabel.setFont(Font.font(20));
-        Label loyalty = new Label("Loyalty points: 0");
-        loyalty.setFont(Font.font(20));
+        VBox leftBox = new VBox(2);
+        studentNameLabel = new Label("testname");
+        studentNameLabel.setFont(Font.font(20));
+        studentNameLabel.setStyle("-fx-border-color: rgba(0,0,0,0.12); -fx-border-width: 1; -fx-border-radius: 6; -fx-padding: 6; -fx-background-color: rgba(245,245,245,0.18);");
+        studentNameLabel.setTextFill(Color.BLACK);
+        moneyLabel = new Label("Money: $0.00");
+        moneyLabel.setFont(Font.font(14));
+        moneyLabel.setTextFill(Color.YELLOW);
+        leftBox.getChildren().addAll(studentNameLabel, moneyLabel);
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        top.getChildren().addAll(nameLabel, spacer, loyalty);
+        loyaltyLabel = new Label("Loyalty points: 0");
+        loyaltyLabel.setFont(Font.font(20));
+        loyaltyLabel.setStyle("-fx-border-color: rgba(0,0,0,0.12); -fx-border-width: 1; -fx-border-radius: 6; -fx-padding: 6; -fx-background-color: rgba(245,245,245,0.18);");
+        loyaltyLabel.setTextFill(Color.BLACK);
+        top.getChildren().addAll(leftBox, spacer, loyaltyLabel);
         top.setPadding(new Insets(12, 18, 12, 18));
         content.setTop(top);
 
@@ -206,10 +376,16 @@ public class CafGui extends Application {
 
         HBox bottom = new HBox(8);
         Button back = smallBackButton();
-        back.setOnAction(e -> owner.close());
+        back.setOnAction(e -> {
+            studentStage.hide();
+            primaryStage.show();
+        });
         Button exit = smallBackButton();
         exit.setText("Exit");
-        exit.setOnAction(e -> owner.close());
+        exit.setOnAction(e -> {
+            saveAll();
+            Platform.exit();
+        });
         bottom.setAlignment(Pos.CENTER);
         bottom.getChildren().addAll(back, exit);
         bottom.setPadding(new Insets(12));
@@ -219,13 +395,22 @@ public class CafGui extends Application {
         return new Scene(root, 1000, 700);
     }
 
+    private void updateStudentLabels(Student s) {
+        if (s == null) return;
+        studentNameLabel.setText(s.getName());
+        loyaltyLabel.setText("Loyalty points: " + s.getPoints());
+        moneyLabel.setText(String.format("Money: $%.2f", s.getMoney()));
+    }
+
     private void refreshStudentMenu() {
         studentRightMenu.getChildren().clear();
         Label menuTitle = new Label("Menu");
         menuTitle.setFont(Font.font(18));
+        menuTitle.setStyle("-fx-border-color: rgba(0,0,0,0.12); -fx-border-width: 1; -fx-border-radius: 6; -fx-padding: 6; -fx-background-color: rgba(245,245,245,0.22);");
+        menuTitle.setTextFill(Color.BLACK);
         studentRightMenu.getChildren().add(menuTitle);
         for (MenuItemModel m : menuItems) {
-            Button item = menuButton(m.getName() + "\n$" + (int)m.getPrice() + "    Stock: " + m.getStock());
+            Button item = menuButton(m.getName() + "\n$" + m.getPrice() + "    Stock: " + m.getStock());
             item.setOnAction(e -> showOrderConfirm(m));
             studentRightMenu.getChildren().add(item);
         }
@@ -262,7 +447,25 @@ public class CafGui extends Application {
                 a.showAndWait();
                 return;
             }
+            Student s = studentManager.getStudent(currentStudentId);
+            if (s == null) return;
+            if (s.getMoney() < m.getPrice()) {
+                Alert a = new Alert(Alert.AlertType.WARNING);
+                a.setContentText("Insufficient funds");
+                a.showAndWait();
+                return;
+            }
             m.decrementStock();
+            s.setMoney(s.getMoney() - m.getPrice());
+            studentManager.saveStudents();
+            saveItems();
+            updateStudentLabels(s);
+            int orderId = nextOrderId++;
+            List<String> list = new ArrayList<>();
+            list.add(s.getName());
+            list.add(m.getName());
+            orderRecords.put(orderId, list);
+            saveOrders();
             int minutes = 1 + rng.nextInt(3);
             Alert a = new Alert(Alert.AlertType.INFORMATION);
             a.setContentText("Estimated time of arrival: " + minutes + " minutes");
@@ -281,10 +484,10 @@ public class CafGui extends Application {
         HBox top = new HBox();
         Label title = new Label("Manager");
         title.setFont(Font.font(20));
+        title.setStyle("-fx-border-color: rgba(0,0,0,0.12); -fx-border-width: 1; -fx-border-radius: 6; -fx-padding: 6; -fx-background-color: rgba(245,245,245,0.18);");
+        title.setTextFill(Color.BLACK);
         HBox.setHgrow(title, Priority.ALWAYS);
-        Button report = styledButton("Report");
-        report.setOnAction(e -> {});
-        top.getChildren().addAll(title, report);
+        top.getChildren().addAll(title);
         top.setPadding(new Insets(12, 18, 12, 18));
         content.setTop(top);
 
@@ -299,12 +502,21 @@ public class CafGui extends Application {
 
         HBox bottom = new HBox(8);
         Button back = smallBackButton();
-        back.setOnAction(e -> owner.close());
+        back.setOnAction(e -> {
+            managerStage.hide();
+            primaryStage.show();
+        });
+        Button report = smallBackButton();
+        report.setText("Report");
+        report.setOnAction(e -> showOrdersReport());
         Button exit = smallBackButton();
         exit.setText("Exit");
-        exit.setOnAction(e -> owner.close());
+        exit.setOnAction(e -> {
+            saveAll();
+            Platform.exit();
+        });
         bottom.setAlignment(Pos.CENTER);
-        bottom.getChildren().addAll(back, exit);
+        bottom.getChildren().addAll(back, report, exit);
         bottom.setPadding(new Insets(12));
         content.setBottom(bottom);
 
@@ -312,15 +524,52 @@ public class CafGui extends Application {
         return new Scene(root, 1000, 700);
     }
 
+    private void showOrdersReport() {
+        Stage s = new Stage();
+        VBox root = new VBox(8);
+        root.setPadding(new Insets(12));
+        if (orderRecords.isEmpty()) {
+            Label l = new Label("No orders yet");
+            l.setFont(Font.font(16));
+            root.getChildren().add(l);
+        } else {
+            for (Map.Entry<Integer, List<String>> e : orderRecords.entrySet()) {
+                Integer id = e.getKey();
+                List<String> data = e.getValue();
+                StringBuilder sb = new StringBuilder();
+                sb.append("Order ID: ").append(id).append("\n");
+                if (data.size() >= 2) {
+                    sb.append("User: ").append(data.get(0)).append("\n");
+                    sb.append("Item: ").append(data.get(1)).append("\n");
+                } else {
+                    for (String part : data) sb.append(part).append("\n");
+                }
+                Label l = new Label(sb.toString());
+                l.setFont(Font.font(14));
+                l.setStyle("-fx-border-color: rgba(0,0,0,0.08); -fx-border-width: 1; -fx-padding: 6; -fx-background-color: rgba(245,245,245,0.12);");
+                l.setTextFill(Color.BLACK);
+                root.getChildren().add(l);
+            }
+        }
+        ScrollPane sp = new ScrollPane(root);
+        sp.setFitToWidth(true);
+        Scene scene = new Scene(sp, 400, 400);
+        s.setScene(scene);
+        s.setTitle("Orders Report");
+        s.show();
+    }
+
     private void refreshManagerMenu() {
         managerRightPane.getChildren().clear();
         Label t = new Label("Items");
         t.setFont(Font.font(18));
+        t.setStyle("-fx-border-color: rgba(0,0,0,0.12); -fx-border-width: 1; -fx-border-radius: 6; -fx-padding: 6; -fx-background-color: rgba(245,245,245,0.22);");
+        t.setTextFill(Color.BLACK);
         managerRightPane.getChildren().add(t);
         for (MenuItemModel m : menuItems) {
             HBox row = new HBox(6);
             row.setAlignment(Pos.CENTER_LEFT);
-            Button item = menuButton(m.getName() + "\n$" + (int)m.getPrice() + "    Stock: " + m.getStock());
+            Button item = menuButton(m.getName() + "\n$" + m.getPrice() + "    Stock: " + m.getStock());
 
             Button rest = formButton("Restock");
             rest.setOnAction(e -> showRestockConfirm(m, rest));
@@ -358,6 +607,7 @@ public class CafGui extends Application {
             Timeline t = new Timeline(new KeyFrame(Duration.seconds(10), ev -> {
                 m.setStock(10);
                 restButton.setDisable(false);
+                saveItems();
                 refreshManagerMenu();
                 refreshStudentMenu();
             }));
@@ -433,16 +683,38 @@ public class CafGui extends Application {
         b.setOnMouseExited(e -> stOut.playFromStart());
     }
 
-    private static class MenuItemModel {
+    private void saveItems() {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("items.dat"))) {
+            ArrayList<MenuItemModel> list = new ArrayList<>(menuItems);
+            oos.writeObject(list);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static class MenuItemModel implements Serializable {
+        private static final long serialVersionUID = 1L;
         private String name;
-        private double price;
+        private int price;
         private int stock;
-        MenuItemModel(String n, double p, int s) { name = n; price = p; stock = s; }
+        MenuItemModel(String n, int p, int s) { name = n; price = p; stock = s; }
         String getName() { return name; }
-        double getPrice() { return price; }
+        int getPrice() { return price; }
         int getStock() { return stock; }
         void setStock(int v) { stock = v; }
         void decrementStock() { if (stock>0) stock--; }
+    }
+
+    private void saveAll() {
+        studentManager.saveStudents();
+        saveItems();
+        saveOrders();
+    }
+
+    @Override
+    public void stop() {
+        saveAll();
     }
 
     public static void main(String[] args) {

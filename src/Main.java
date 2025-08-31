@@ -114,22 +114,12 @@ public class Main {
         String msg2 = fulfillment.addToWaitingList(1004);
         System.out.println(msg);
         System.out.println("Waiting list size = " + fulfillment.getWaitingList().size());
+     Redemption redemption=new Redemption("prize",50);
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+//tables: student + order+loyalty points (don't forget to update the points) , student + orders , soldout items ,
 
 
 
