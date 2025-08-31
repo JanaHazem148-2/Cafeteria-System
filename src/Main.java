@@ -19,47 +19,43 @@ public class Main {
             e.printStackTrace();
         }
 
-             //all the comments are code with no problem
+        //all the comments are code with no problem
 //                // إنشاء المنيو والمدير
-                Menu menu = new Menu();
-                MenuManager manager = new MenuManager(menu);
+        Menu menu = new Menu();
+        MenuManager manager = new MenuManager(menu);
 
-                System.out.println("=== عرض المنيو الكامل ===");
-                menu.displayFullMenu();
+        System.out.println("==display the menu: ==");
+        menu.displayFullMenu();
 
-                // نجرب إضافة صنف جديد للمنيو
-                MenuItem newItem = new MenuItem("Pizza", "Cheese Pizza", 90.0, "Main Courses", 3);
-                manager.addItem(newItem);
-                System.out.println("\nبعد إضافة بيتزا:");
-                menu.displayFullMenu();
+        MenuItem newItem = new MenuItem("Pizza", "Cheese Pizza", 90.0, "Main Courses", 3);
+        manager.addItem(newItem);
+        System.out.println("\nafter adding pizza:");
+        menu.displayFullMenu();
 
-                // نجرب أوردر لطالب
-                Student student = new Student("Jana", 1,"1/5/2025","student",3,4);
-                OrderItem orderItem = new OrderItem();
-                OrderProcessing orderProcessing = new OrderProcessing(orderItem);
+        Student student = new Student("Jana", 1, "1/5/2025", "student", 3, 4);
+        OrderItem orderItem = new OrderItem();
+        OrderProcessing orderProcessing = new OrderProcessing(orderItem);
 
-                // إضافة عنصر للأوردر
-                System.out.println("\n=== نجرب نضيف عنصر للأوردر ===");
-                System.out.println("the points of the student ="+student.getPoints());
+        System.out.println("\n===adding item to order ===");
+        System.out.println("the points of the student =" + student.getPoints());
 
-                MenuItem coffee = menu.findItemByName("Coffee").get();
-                System.out.println(orderItem.addItemtoOrder(student.getName(), 1001, student.getID(), student.getPoints(), coffee));
-                MenuItem tiramisu = menu.findItemByName("Tiramisu").get();
-                System.out.println(orderItem.addItemtoOrder(student.getName(), 1001, student.getID(), student.getPoints(), tiramisu));
-                 System.out.println(tiramisu.getNumOfItemleft());
-                // تأكيد الأوردر
+        MenuItem coffee = menu.findItemByName("Coffee").get();
+        System.out.println(orderItem.addItemtoOrder(student.getName(), 1001, student.getID(), student.getPoints(), coffee));
+        MenuItem tiramisu = menu.findItemByName("Tiramisu").get();
+        System.out.println(orderItem.addItemtoOrder(student.getName(), 1001, student.getID(), student.getPoints(), tiramisu));
+        System.out.println(tiramisu.getNumOfItemleft());
 //                orderProcessing.confirmOrder(1001, student.getID());
         System.out.println("the total price of the order=");
         System.out.println(orderItem.getTotalCostOfOneOrder(1001));
 
-//                // إلغاء أوردر (هيشيل من اللست)
+//                // removing order
 //                orderProcessing.cancelOrder(1001, student.getID());
 
-                // نجرب مكافآت الولاء (reward)
-                LoyaltyProgram loyaltyProgram = new LoyaltyProgram();
-                loyaltyProgram.checkOrderAchievements(student, orderItem.getTotalCostOfOneOrder(1001));
+        //  (reward)
+        LoyaltyProgram loyaltyProgram = new LoyaltyProgram();
+        loyaltyProgram.checkOrderAchievements(student, orderItem.getTotalCostOfOneOrder(1001));
 
-                OrderItem orderItem1=new OrderItem();
+        OrderItem orderItem1 = new OrderItem();
         MenuItem tea = menu.findItemByName("tea").get();
         System.out.println(orderItem.addItemtoOrder(student.getName(), 1002, student.getID(), student.getPoints(), tea));
         MenuItem burger = menu.findItemByName("Burger").get();
@@ -71,15 +67,12 @@ public class Main {
         System.out.println("Total cost of all orders = " + orderProcessing.getTotalCostOfAllOrders());
 
         System.out.println(orderProcessing.getTotalCostOfAllOrders());
-                // عرض العناصر اللي خلصت
-                System.out.println("\n=== عناصر خلصت ===");
-                for (MenuItem item : menu.getMenuItems()) {
-                    if (item.getNumOfItemleft() == 0) {
-                        System.out.println(item.getName() + " is SOLD OUT!");
-                    }
-                }
+        for (MenuItem item : menu.getMenuItems()) {
+            if (item.getNumOfItemleft() == 0) {
+                System.out.println(item.getName() + " is SOLD OUT!");
+            }
+        }
 
-                System.out.println("\n=== السيستم شغال! ===");
         MenuItem sahlab = menu.findItemByName("Sahlab").get();
         System.out.println(orderItem.addItemtoOrder(student.getName(), 1003, student.getID(), student.getPoints(), sahlab));
         MenuItem chickensandwich = menu.findItemByName("Chicken sandwich").get();
@@ -99,30 +92,19 @@ public class Main {
 
         System.out.println(orderProcessing.getTotalCostOfAllOrders());
 
-// نعمل object من الـ fulfillment
         OrderFulfillment fulfillment = new OrderFulfillment();
-
-// نضيف الأوردر للـ waiting list
 
         String msg = fulfillment.addToWaitingList(1003);
         System.out.println(msg);
         System.out.println("Waiting list size = " + fulfillment.getWaitingList().size());
 
-        Order order=new Order(1004);
+        Order order = new Order(1004);
         System.out.println(orderItem.addItemtoOrder(student.getName(), 1004, student.getID(), student.getPoints(), coffee));
 
         String msg2 = fulfillment.addToWaitingList(1004);
         System.out.println(msg);
         System.out.println("Waiting list size = " + fulfillment.getWaitingList().size());
-     Redemption redemption=new Redemption("prize",50);
-
-
-
-
-//tables: student + order+loyalty points (don't forget to update the points) , student + orders , soldout items ,
-
-
-
+        Redemption redemption = new Redemption("prize", 50);
 
 
     }

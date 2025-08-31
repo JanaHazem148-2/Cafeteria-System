@@ -6,6 +6,11 @@ import java.util.Map;
 public class OrderItem implements IOrderItem{
     MenuItem item;
 
+    public int getNewpoints() {
+        return newpoints;
+    }
+
+    private int newpoints;
 
     public Map<Integer, List<MenuItem>> getItems() {
         return items;
@@ -41,6 +46,8 @@ public class OrderItem implements IOrderItem{
         System.out.println("Total points: " + new_points);
         loyaltyProgram.checkOrderAchievements(student, totalCostOfOneOrder);
         System.out.println(totalCostOfOneOrder);
+        this.newpoints=new_points;
+        student.setPoints(new_points);
         return "The item is added to your order successfully!";
     }
     public double getTotalCostOfOneOrder(int order_id) {

@@ -52,6 +52,7 @@ public class CafGui extends Application {
     private Random rng = new Random();
 
     private StudentManager studentManager = new StudentManager();
+    private OrderItem orderItem = new OrderItem();
 
     private Label studentNameLabel;
     private Label moneyLabel;

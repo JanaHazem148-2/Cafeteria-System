@@ -11,7 +11,7 @@ public class StudentManager {
 
     public StudentManager() {
         managers.put(100001, "Abdelrahman Manager");
-        managers.put(100002, "janna Manager");
+        managers.put(100002, "jana Manager");
         managers.put(100003, "mostafa Manager");
         loadStudents();
     }
