@@ -36,9 +36,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-
 public class CafGui extends Application {
-
     private Stage primaryStage;
     private Stage studentStage;
     private Stage managerStage;
@@ -384,7 +382,6 @@ public class CafGui extends Application {
         Button exit = smallBackButton();
         exit.setText("Exit");
         exit.setOnAction(e -> {
-            saveAll();
             Platform.exit();
         });
         bottom.setAlignment(Pos.CENTER);
@@ -642,7 +639,6 @@ public class CafGui extends Application {
         addHoverAnimation(b);
         return b;
     }
-
     private Button menuButton(String text) {
         Button b = new Button(text);
         b.setFont(Font.font(14));

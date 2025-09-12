@@ -20,7 +20,6 @@ public class Main {
         }
 
         //all the comments are code with no problem
-//                // إنشاء المنيو والمدير
         Menu menu = new Menu();
         MenuManager manager = new MenuManager(menu);
 
@@ -106,7 +105,6 @@ public class Main {
         System.out.println("Waiting list size = " + fulfillment.getWaitingList().size());
         Redemption redemption = new Redemption("prize", 50);
 
-
     }
         }
 
@@ -137,6 +135,7 @@ public class Main {
 //        }
 //
 //        try {
+
 //            menuManager.removeItem("Coke");
 //            System.out.println("\nCoke removed!");
 //            System.out.println("Updated Menu:");
